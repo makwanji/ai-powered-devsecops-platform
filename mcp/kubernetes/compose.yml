@@ -1,0 +1,28 @@
+services:
+  k8s-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: k8s-mcp
+
+    network_mode: host
+
+    restart: unless-stopped
+
+    ports:
+      - "8001:8001"
+
+    environment:
+      KUBECONFIG: /app/.kube/config
+
+    volumes:
+      - /u01/jig/code/ai-platform/kubernetes/kubeconfig:/app/.kube/config:ro
+
+    # networks:
+    #   - ai-platform
+
+networks:
+  ai-platform:
+    name: ai-platform
+    driver: bridge

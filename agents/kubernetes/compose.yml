@@ -1,0 +1,36 @@
+services:
+
+  k8s-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: k8s-agent
+
+    network_mode: host
+
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    environment:
+      KUBECONFIG: /app/.kube/config
+
+    volumes:
+      - /u01/jig/code/ai-platform/kubernetes/kubeconfig:/app/.kube/config:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8000/health"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
