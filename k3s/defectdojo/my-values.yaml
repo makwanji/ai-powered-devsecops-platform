@@ -1,0 +1,23 @@
+# Configure site accessibility
+host: "defectdojo.infra-labs.com"
+
+# Ingress Configuration
+django:
+  ingress:
+    enabled: true
+    activateTLS: true
+    secretName: defectdojo-tls
+
+# Enable automatic secret generation
+createSecret: true
+createRabbitMqSecret: true
+createPostgresqlSecret: true
+
+# FIX: Replace Redis configuration with Valkey
+createValkeySecret: true
+
+postgresql:
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: 17.6.0-debian-12-r4
