@@ -1,4 +1,4 @@
-# AI-Powered Kubernetes DevSecOps Platform
+# AI-Powered DevSecOps Platform
 
 A local, privacy-first AI-powered DevSecOps platform for investigating, securing, and operating Kubernetes environments.
 
