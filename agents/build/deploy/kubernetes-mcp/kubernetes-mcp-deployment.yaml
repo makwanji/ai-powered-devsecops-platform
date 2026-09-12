@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-mcp
+  namespace: ai-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-mcp
+  template:
+    metadata:
+      labels:
+        app: kubernetes-mcp
+    spec:
+      serviceAccountName: kubernetes-mcp
+
+      containers:
+        - name: kubernetes-mcp
+          image: quay.io/containers/kubernetes_mcp_server:v0.0.66
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - "--port"
+            - "8080"
+            - "--read-only"
+            - "--toolsets"
+            - "core"
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
