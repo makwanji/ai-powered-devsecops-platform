@@ -1,0 +1,18 @@
+Prompt 1:
+---------
+
+Rank the 10 stories using this priority:
+
+1. Active exploitation or major container/Kubernetes breach
+2. Critical container/Kubernetes vulnerability
+3. Container or software supply-chain attack
+4. Company fined or penalized for cybersecurity/compliance failure
+5. Major Kubernetes/cloud-native security incident
+6. Significant container-security research or new attack technique
+7. Important security advisory affecting container environments
+
+Do not rank a story highly simply because it is popular. Rank it based on security impact and relevance to enterprise DevSecOps.
+
+
+Prompt 2:
+---------
