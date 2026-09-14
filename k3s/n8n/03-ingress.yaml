@@ -1,0 +1,26 @@
+# Same pattern as ../sonar/04-ingress.yaml - point a hostname at the node IP
+# (e.g. `172.31.35.41 n8n.example.com` in /etc/hosts) and browse to
+# http://n8n.example.com via Traefik instead of the NodePort.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n
+  namespace: n8n
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/buffering: "false"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: n8n.adnlocal.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678
