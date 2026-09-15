@@ -37,6 +37,7 @@ data:
   OLLAMA_BASE_URLS: "http://10.21.213.16:11434"
   WEBUI_AUTH: "true"
   ENABLE_WEBSOCKETS: "true"
+  WEBUI_SECRET_KEY: "8d40ee8faafee20a8a25c50e09008708575760054fb60230a9a658965905124a"
 ---
 apiVersion: apps/v1
 kind: Deployment

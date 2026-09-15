@@ -814,3 +814,21 @@ Monitoring verifies.
 ```
 
 This project is intended to showcase practical experience building a secure, automated, and AI-assisted Kubernetes DevSecOps platform suitable for modern cloud-native engineering environments.
+
+### Application URL
+
+```text
+# hostentry
+10.21.209.71 n8n.adnlocal.com openwebui.adnlocal.com
+
+# n8n
+URL : https://n8n.adnlocal.com/
+Username : jignesh.makwana@adnovum.sg
+Password : Welcome#1
+
+# openwebui
+URL : https://openwebui.adnlocal.com
+Username : jignesh.makwana@adnovum.sg
+Password : Welcome#1
+
+```
