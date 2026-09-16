@@ -1,0 +1,220 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wazuh-mcp
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wazuh-mcp-secret
+  namespace: wazuh-mcp
+type: Opaque
+# Do NOT fill in stringData here and commit real credentials to git.
+# Apply this secret imperatively instead, e.g.:
+#
+#   API_PASS=$(kubectl get secret wazuh-credentials -n wazuh -o jsonpath='{.data.API_PASSWORD}' | base64 -d)
+#   IDX_PASS=$(kubectl get secret wazuh-credentials -n wazuh -o jsonpath='{.data.INDEXER_PASSWORD}' | base64 -d)
+#   kubectl create secret generic wazuh-mcp-secret -n wazuh-mcp \
+#     --from-literal=WAZUH_USER=wazuh-wui \
+#     --from-literal=WAZUH_PASS="$API_PASS" \
+#     --from-literal=WAZUH_INDEXER_USER=admin \
+#     --from-literal=WAZUH_INDEXER_PASS="$IDX_PASS" \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# This block is left as a CHANGE_ME placeholder only so `kubectl apply -f
+# deployment.yaml` doesn't fail with "secret not found". IMPORTANT: because
+# `apply` on this file recreates the Secret with these placeholders, run the
+# command above EVERY TIME after applying this file (not just the first
+# time) — it's idempotent and will overwrite the placeholders with the real
+# values again.
+stringData:
+  WAZUH_USER: "CHANGE_ME"
+  WAZUH_PASS: "CHANGE_ME"
+  WAZUH_INDEXER_USER: "CHANGE_ME"
+  WAZUH_INDEXER_PASS: "CHANGE_ME"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wazuh-mcp
+  namespace: wazuh-mcp
+  labels:
+    app: wazuh-mcp
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: wazuh-mcp
+
+  template:
+    metadata:
+      labels:
+        app: wazuh-mcp
+
+    spec:
+      containers:
+        - name: wazuh-mcp
+
+          # Pinned version. Verified present in ghcr.io/gensecaihq/wazuh-mcp-server
+          # tag list on 2026-09-16 alongside the cluster's Wazuh manager (4.14.6).
+          image: ghcr.io/gensecaihq/wazuh-mcp-server:4.3.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+
+          env:
+
+            # -------------------------------------------------
+            # Wazuh Manager API
+            # -------------------------------------------------
+
+            # In-cluster DNS for the wazuh-manager headless Service (namespace: wazuh).
+            - name: WAZUH_HOST
+              value: "https://wazuh-manager.wazuh.svc.cluster.local"
+
+            - name: WAZUH_PORT
+              value: "55000"
+
+            - name: WAZUH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-mcp-secret
+                  key: WAZUH_USER
+
+            - name: WAZUH_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-mcp-secret
+                  key: WAZUH_PASS
+
+            - name: WAZUH_VERIFY_SSL
+              value: "false"
+
+
+            # -------------------------------------------------
+            # Wazuh Indexer
+            # Required for alerts/vulnerability functionality
+            # -------------------------------------------------
+
+            # In-cluster DNS for the wazuh-indexer Service (namespace: wazuh).
+            - name: WAZUH_INDEXER_HOST
+              value: "https://wazuh-indexer.wazuh.svc.cluster.local"
+
+            - name: WAZUH_INDEXER_PORT
+              value: "9200"
+
+            - name: WAZUH_INDEXER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-mcp-secret
+                  key: WAZUH_INDEXER_USER
+
+            - name: WAZUH_INDEXER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-mcp-secret
+                  key: WAZUH_INDEXER_PASS
+
+            # Separate from WAZUH_VERIFY_SSL (manager-only). Without this the
+            # indexer client verifies the self-signed cert and fails every
+            # alert/vulnerability tool with CERTIFICATE_VERIFY_FAILED, which
+            # then trips the circuit breaker after 5 failures (503s).
+            - name: WAZUH_INDEXER_VERIFY_SSL
+              value: "false"
+
+
+            # -------------------------------------------------
+            # MCP Server
+            # -------------------------------------------------
+
+            - name: MCP_PORT
+              value: "3000"
+
+            # Authless: on the pinned 4.3.0 image, /auth/token hardcodes a
+            # 24h JWT lifetime regardless of TOKEN_LIFETIME_HOURS, and generic
+            # MCP clients (e.g. OpenWebUI) send whatever token they're given
+            # verbatim as a Bearer header — they don't perform this server's
+            # custom API-key-to-JWT exchange. That makes bearer auth
+            # impractical for a static client config without daily manual
+            # token rotation. Accepted trade-off: this Service is ClusterIP,
+            # so only pods inside this k3s cluster can reach it — but that is
+            # every namespace, not just OpenWebUI. Write/active-response tools
+            # stay disabled unless AUTHLESS_ALLOW_WRITE=true is also set.
+            - name: AUTH_MODE
+              value: "none"
+
+
+          # -------------------------------------------------
+          # Health
+          # -------------------------------------------------
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+
+          # -------------------------------------------------
+          # Resource limits
+          # -------------------------------------------------
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazuh-mcp
+  namespace: wazuh-mcp
+  labels:
+    app: wazuh-mcp
+spec:
+  type: ClusterIP
+
+  selector:
+    app: wazuh-mcp
+
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
