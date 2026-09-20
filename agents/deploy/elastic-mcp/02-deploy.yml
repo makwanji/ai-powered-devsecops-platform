@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-mcp
+  namespace: ai-platform
+  labels:
+    app: elastic-mcp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: elastic-mcp
+
+  template:
+    metadata:
+      labels:
+        app: elastic-mcp
+
+    spec:
+      containers:
+        - name: elastic-mcp
+          image: docker.elastic.co/mcp/elasticsearch:0.4.6
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - http
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          env:
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-mcp-secret
+                  key: ES_URL
+
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-mcp-secret
+                  key: ES_API_KEY
+
+            - name: ES_SSL_SKIP_VERIFY
+              value: "true"
+
+            # Trust the ECK Elasticsearch CA
+            - name: SSL_CERT_FILE
+              value: /etc/elastic-ca/ca.crt
+
+          volumeMounts:
+            - name: elastic-ca
+              mountPath: /etc/elastic-ca
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: elastic-ca
+          secret:
+            secretName: quickstart-es-http-ca-internal

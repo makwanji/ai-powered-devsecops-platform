@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-mcp
+  namespace: ai-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: elastic-mcp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
